@@ -5,6 +5,7 @@
 require "set"
 dir = ARGV[0] || raise("use #{$0} dir output_dir")
 output_dir = ARGV[1] || raise("use #{$0} dir output_dir")
+timestamp = Time.now
 
 def parse(fd,k)
   ret = []
@@ -58,12 +59,12 @@ totallistas.each{|d|
   eleccion_agrupaciones[d["cod_eleccion"]] << lista.fetch("denominacion_agrupacion")
 }
 
-header = ["lista","distrito-seccion" ] + totallistas.first.keys
+header = ["fecha carga","lista","distrito-seccion" ] + totallistas.first.keys
 codigos_elecciones.each{|cod_eleccion,name|
   open(output_dir + "/#{name}.csv", "w:UTF-8"){|fd|
     fd.write(header.join(",") + "\n")
     output[cod_eleccion].each{|d|
-      fd.write(d.join(",") + "\n")
+      fd.write(([timestamp] + d).join(",") + "\n")
     }
   }
   agrupaciones = eleccion_agrupaciones[cod_eleccion].to_a.sort
