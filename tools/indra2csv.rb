@@ -2,10 +2,16 @@
 #totales.csv 
 #k=%w{cod_eleccion INDRAProv INDRAdep nombre_lugar mesas_totales mesas_escrutadas mesas_escrutadas_pct electores total_votantes participacion_sobre_censo participacion_sobre_escrutado electores_escrutados electores_escrutados_pct votos_validos votos_validos_pct votos_positivos votos_positivos_pct votos_blanco votos_blanco_pct votos_nulos votos_nulos_pct votos_impugnados votos_impugnados_pct }
 
+def pct2alpha(pct,max=100)
+  alpha = pct.to_f * 255 / max
+  ("0"+alpha.to_i.to_s(16))[-2..-1]
+end
+
 require "set"
 dir = ARGV[0] || raise("use #{$0} dir output_dir")
 output_dir = ARGV[1] || raise("use #{$0} dir output_dir")
 timestamp = Time.now
+mapa_colores =  {"0131"=>"#1c70b6", "0047"=>"#6cb741", "0137"=>"#a9261c", "0132"=>"#9435f3", "0133"=>"#ffff99", "0134"=>"#fe742c", "0135"=>"#999966"} 
 
 def parse(fd,k)
   ret = []
@@ -38,7 +44,7 @@ totales = parse(open(dir + "/totales.csv","r:ISO8859-1"),  %w{cod_eleccion INDRA
 
 output=Hash.new{|h,k| h[k]=[] }
 resultados_por_provincia=Hash.new{|h,k| h[k]=[] }
-output_trans=Hash.new{|h,k| h[k]=Hash.new{|h2,k2| h2[k2] = Hash.new{|h3,k3| h3[k3] = []}} }
+output_trans=Hash.new{|h,k| h[k]=Hash.new{|h2,k2| h2[k2] = Hash.new{|h3,k3| h3[k3] = {}}} }
 output_totales=Hash.new{|h,k| h[k]=[] }
 eleccion_agrupaciones=Hash.new{|h,k| h[k]=Set.new }
 
@@ -68,7 +74,7 @@ totallistas.each{|d|
     resultados_por_provincia[d["cod_eleccion"]] << row
   else
     output[d["cod_eleccion"]] << row
-    output_trans[d["cod_eleccion"]][d.fetch("INDRAProv") + d.fetch("INDRAdep")][lista.fetch("denominacion_agrupacion")]=val["votos_agrupacion_pct"]
+    output_trans[d["cod_eleccion"]][d.fetch("INDRAProv") + d.fetch("INDRAdep")][lista.fetch("denominacion_agrupacion")]=val
     eleccion_agrupaciones[d["cod_eleccion"]] << lista.fetch("denominacion_agrupacion")
   end
 }
@@ -86,17 +92,23 @@ codigos_elecciones.each{|cod_eleccion,name|
   }
   agrupaciones = eleccion_agrupaciones[cod_eleccion].to_a.sort
   open(output_dir + "/#{name}_traspuesta.csv", "w:UTF-8"){|fd|
-    fd.write((["INDRA"] + agrupaciones + ["1ro", "2do", "3ro"] ).join(",") + "\n")
+    fd.write((["INDRA"] + agrupaciones + ["color_primero","1ro", "2do", "3ro"]  ).join(",") + "\n")
     output_trans[cod_eleccion].each{|distrito_seccion, votos|
       row = [distrito_seccion]
       agrupaciones.each{|agrupacion|
-        row << votos[agrupacion]
+        row << votos[agrupacion]["votos_agrupacion_pct"]
       }
       # los primeros 3 puestos
-      top3 = votos.sort_by{|agrupacion_votos| 
-         agrupacion_votos.last.to_s.to_i # algunos votos son [] (?), así los convierto a 0
+      top3 = votos.sort_by{|agrupacion,values| 
+         values["votos_agrupacion_pct"].to_s.to_i # algunos votos son [] (?), así los convierto a 0
         }.reverse[0 ... 3]
-      row += top3.map(&:first)
+      if top3.first #color
+        agrupacion, values =top3.first
+        if mapa_colores[values["cod_agrupacion"]]
+          row << mapa_colores[values["cod_agrupacion"]] + pct2alpha(values["votos_agrupacion_pct"],80)
+        end
+      end
+      row += top3.map{|agrupacion,values| agrupacion}
       fd.write(row.join(",") + "\n")
       if top3.first and cod_eleccion == "1" #solo para presidente
         ganador = top3.first
