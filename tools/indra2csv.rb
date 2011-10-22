@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 #totales.csv 
-#k=%w{cod_eleccion cod_distrito cod_seccion nombre_lugar mesas_totales mesas_escrutadas mesas_escrutadas_pct electores total_votantes participacion_sobre_censo participacion_sobre_escrutado electores_escrutados electores_escrutados_pct votos_validos votos_validos_pct votos_positivos votos_positivos_pct votos_blanco votos_blanco_pct votos_nulos votos_nulos_pct votos_impugnados votos_impugnados_pct }
+#k=%w{cod_eleccion INDRAProv INDRAdep nombre_lugar mesas_totales mesas_escrutadas mesas_escrutadas_pct electores total_votantes participacion_sobre_censo participacion_sobre_escrutado electores_escrutados electores_escrutados_pct votos_validos votos_validos_pct votos_positivos votos_positivos_pct votos_blanco votos_blanco_pct votos_nulos votos_nulos_pct votos_impugnados votos_impugnados_pct }
 
 require "set"
 dir = ARGV[0] || raise("use #{$0} dir output_dir")
@@ -30,19 +30,24 @@ codigos_elecciones = {
   "6" => "Diputados Provinciales",
 }
 
-totallistas = parse(open(dir + "/totaleslistas.csv","r:ISO8859-1"), %w{cod_eleccion cod_distrito cod_seccion nombre_lugar dia hora minuto cod_agrupacion votos_agrupacion votos_agrupacion_pct cargos_electos} + 10.times.map.with_index{|i| ["cod_lista_#{i}", "votos_lista_#{i}", "votos_lista_pct_#{i}", ]}.flatten)
+totallistas = parse(open(dir + "/totaleslistas.csv","r:ISO8859-1"), %w{cod_eleccion INDRAProv INDRAdep nombre_lugar dia hora minuto cod_agrupacion votos_agrupacion votos_agrupacion_pct cargos_electos} + 10.times.map.with_index{|i| ["cod_lista_#{i}", "votos_lista_#{i}", "votos_lista_pct_#{i}", ]}.flatten)
 
 listas = parse(open(dir + "/listas.csv","r:ISO8859-1"), %w{cod_agrupacion sigla_agrupacion denominacion_agrupacion})
 
-totales = parse(open(dir + "/totales.csv","r:ISO8859-1"),  %w{cod_eleccion cod_distrito cod_seccion nombre_lugar mesas_totales mesas_escrutadas mesas_escrutadas_pct electores total_votantes participacion_sobre_censo participacion_sobre_escrutado electores_escrutados  electores_escrutados_pct votos_validos votos_validos_pct votos_positivos votos_positivos_pct votos_en_blanco votos_en_blanco_pct votos_nulos votos_nulos_pct votos_recurridos_e_impugnados votos_recurridos_e_impugnados_pct cargos_a_elegir dia hora minuto } )
+totales = parse(open(dir + "/totales.csv","r:ISO8859-1"),  %w{cod_eleccion INDRAProv INDRAdep nombre_lugar mesas_totales mesas_escrutadas mesas_escrutadas_pct electores total_votantes participacion_sobre_censo participacion_sobre_escrutado electores_escrutados  electores_escrutados_pct votos_validos votos_validos_pct votos_positivos votos_positivos_pct votos_en_blanco votos_en_blanco_pct votos_nulos votos_nulos_pct votos_recurridos_e_impugnados votos_recurridos_e_impugnados_pct cargos_a_elegir dia hora minuto } )
 
 output=Hash.new{|h,k| h[k]=[] }
 output_trans=Hash.new{|h,k| h[k]=Hash.new{|h2,k2| h2[k2] = Hash.new{|h3,k3| h3[k3] = []}} }
 output_totales=Hash.new{|h,k| h[k]=[] }
 eleccion_agrupaciones=Hash.new{|h,k| h[k]=Set.new }
 
+ganador_distrito = Hash.new{|h,k| h[k]=[] } 
+
+#
+# totaleslistas.csv
+#
 totallistas.each{|d|
-  next if d["cod_distrito"] == "999" or d["cod_seccion"] == "999" 
+  next if d["INDRAProv"] == "999" or d["INDRAdep"] == "999" 
   lista = listas.find{|l| 
     l.fetch("cod_agrupacion") == d.fetch("cod_agrupacion")
   }
@@ -57,12 +62,15 @@ totallistas.each{|d|
     val["votos_lista_#{i}"] = val["votos_lista_#{i}"].to_i 
     val["votos_lista_pct_#{i}"] = "#{val["votos_lista_pct_#{i}"].to_f / 100}" 
   }
-  output[d["cod_eleccion"]] << [ lista.fetch("denominacion_agrupacion"), d.fetch("cod_distrito") + d.fetch("cod_seccion") ] + val.values 
-  output_trans[d["cod_eleccion"]][d.fetch("cod_distrito") + d.fetch("cod_seccion")][lista.fetch("denominacion_agrupacion")]=val["votos_agrupacion"]
+  output[d["cod_eleccion"]] << [ lista.fetch("denominacion_agrupacion"), d.fetch("INDRAProv") + d.fetch("INDRAdep") ] + val.values 
+  output_trans[d["cod_eleccion"]][d.fetch("INDRAProv") + d.fetch("INDRAdep")][lista.fetch("denominacion_agrupacion")]=val["votos_agrupacion_pct"]
   eleccion_agrupaciones[d["cod_eleccion"]] << lista.fetch("denominacion_agrupacion")
 }
 
-header = ["fecha carga","lista","distrito-seccion" ] + totallistas.first.keys
+# 
+# CSVs por codigo de eleccion
+#
+header = ["fecha carga","lista","INDRA" ] + totallistas.first.keys
 codigos_elecciones.each{|cod_eleccion,name|
   open(output_dir + "/#{name}.csv", "w:UTF-8"){|fd|
     fd.write(header.join(",") + "\n")
@@ -72,23 +80,44 @@ codigos_elecciones.each{|cod_eleccion,name|
   }
   agrupaciones = eleccion_agrupaciones[cod_eleccion].to_a.sort
   open(output_dir + "/#{name}_traspuesta.csv", "w:UTF-8"){|fd|
-    fd.write((["distrito-seccion"] + agrupaciones + ["1ro", "2do", "3ro"] ).join(",") + "\n")
+    fd.write((["INDRA"] + agrupaciones + ["1ro", "2do", "3ro"] ).join(",") + "\n")
     output_trans[cod_eleccion].each{|distrito_seccion, votos|
       row = [distrito_seccion]
       agrupaciones.each{|agrupacion|
         row << votos[agrupacion]
       }
       # los primeros 3 puestos
-      row += votos.sort_by{|agrupacion_votos| 
+      top3 = votos.sort_by{|agrupacion_votos| 
          agrupacion_votos.last.to_s.to_i # algunos votos son [] (?), así los convierto a 0
-        }.reverse[0 ... 3].map(&:first)
+        }.reverse[0 ... 3]
+      row += top3.map(&:first)
       fd.write(row.join(",") + "\n")
+      if top3.first
+        ganador = top3.first
+        ganador_distrito[ganador.first] << [distrito_seccion,ganador.last]
+      end
     }
   }
 }
 
+#
+# departamentos_ganados.csv
+#
+ganador_distrito.each{|agrupacion,distritos_votos|
+  open(output_dir + "/distritos_ganados_#{agrupacion}.csv","w:UTF-8"){|fd|
+    fd.write(["INDRA","votos_pct"].join(",") + "\n")
+    distritos_votos.each{|distrito,votos|
+      fd.write([distrito,votos].join(",") + "\n")
+    }
+  }
+}
+
+#
+# totales.csv
+#
+
 totales.each{|d|
-  next if d["cod_distrito"] == "999" or d["cod_seccion"] == "999" 
+  next if d["INDRAProv"] == "999" or d["INDRAdep"] == "999" 
   val = d.dup
   %w{mesas_escrutadas mesas_totales electores total_votantes participacion_sobre_censo participacion_sobre_escrutado electores_escrutados  votos_validos votos_positivos votos_en_blanco votos_nulos votos_recurridos_e_impugnados }.each{|k|
     val[k] = val[k].to_i
@@ -97,10 +126,10 @@ totales.each{|d|
     val[k] = "#{val[k].to_f / 100}"
   }
 
-  output_totales[d["cod_eleccion"]] << [ d.fetch("cod_distrito") + d.fetch("cod_seccion") ] + val.values 
+  output_totales[d["cod_eleccion"]] << [ d.fetch("INDRAProv") + d.fetch("INDRAdep") ] + val.values 
 }
 
-header = ["fecha carga","distrito-seccion" ] + totales.first.keys
+header = ["fecha carga","INDRA" ] + totales.first.keys
 codigos_elecciones.each{|cod_eleccion,name|
   open(output_dir + "/totales_#{name}.csv", "w:UTF-8"){|fd|
     fd.write(header.join(",") + "\n")
