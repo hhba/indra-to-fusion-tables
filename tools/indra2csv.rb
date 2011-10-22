@@ -22,12 +22,12 @@ def parse(fd,k)
   ret
 end
 codigos_elecciones = {
-  "1" => "Presidente", 
-  "2" => "Senadores Nacionales",
-  "3" => "Diputados Nacionales",
-  "4" => "Gobernador",
-  "5" => "Senadores Provinciales",
-  "6" => "Diputados Provinciales",
+  "1" => "presidente", 
+  "2" => "senadores_nacionales",
+  "3" => "diputados_nacionales",
+  "4" => "gobernador",
+  "5" => "senadores_provinciales",
+  "6" => "diputados_provinciales",
 }
 
 totallistas = parse(open(dir + "/totaleslistas.csv","r:ISO8859-1"), %w{cod_eleccion INDRAProv INDRAdep nombre_lugar dia hora minuto cod_agrupacion votos_agrupacion votos_agrupacion_pct cargos_electos} + 10.times.map.with_index{|i| ["cod_lista_#{i}", "votos_lista_#{i}", "votos_lista_pct_#{i}", ]}.flatten)
@@ -37,6 +37,7 @@ listas = parse(open(dir + "/listas.csv","r:ISO8859-1"), %w{cod_agrupacion sigla_
 totales = parse(open(dir + "/totales.csv","r:ISO8859-1"),  %w{cod_eleccion INDRAProv INDRAdep nombre_lugar mesas_totales mesas_escrutadas mesas_escrutadas_pct electores total_votantes participacion_sobre_censo participacion_sobre_escrutado electores_escrutados  electores_escrutados_pct votos_validos votos_validos_pct votos_positivos votos_positivos_pct votos_en_blanco votos_en_blanco_pct votos_nulos votos_nulos_pct votos_recurridos_e_impugnados votos_recurridos_e_impugnados_pct cargos_a_elegir dia hora minuto } )
 
 output=Hash.new{|h,k| h[k]=[] }
+resultados_por_provincia=Hash.new{|h,k| h[k]=[] }
 output_trans=Hash.new{|h,k| h[k]=Hash.new{|h2,k2| h2[k2] = Hash.new{|h3,k3| h3[k3] = []}} }
 output_totales=Hash.new{|h,k| h[k]=[] }
 eleccion_agrupaciones=Hash.new{|h,k| h[k]=Set.new }
@@ -47,7 +48,7 @@ ganador_distrito = Hash.new{|h,k| h[k]=[] }
 # totaleslistas.csv
 #
 totallistas.each{|d|
-  next if d["INDRAProv"] == "999" or d["INDRAdep"] == "999" 
+  next if  d["INDRAProv"] == "999"  
   lista = listas.find{|l| 
     l.fetch("cod_agrupacion") == d.fetch("cod_agrupacion")
   }
@@ -62,9 +63,14 @@ totallistas.each{|d|
     val["votos_lista_#{i}"] = val["votos_lista_#{i}"].to_i 
     val["votos_lista_pct_#{i}"] = "#{val["votos_lista_pct_#{i}"].to_f / 100}" 
   }
-  output[d["cod_eleccion"]] << [ lista.fetch("denominacion_agrupacion"), d.fetch("INDRAProv") + d.fetch("INDRAdep") ] + val.values 
-  output_trans[d["cod_eleccion"]][d.fetch("INDRAProv") + d.fetch("INDRAdep")][lista.fetch("denominacion_agrupacion")]=val["votos_agrupacion_pct"]
-  eleccion_agrupaciones[d["cod_eleccion"]] << lista.fetch("denominacion_agrupacion")
+  row = [ lista.fetch("denominacion_agrupacion"), d.fetch("INDRAProv") + d.fetch("INDRAdep") ] + val.values 
+  if d["INDRAdep"] == "999" 
+    resultados_por_provincia[d["cod_eleccion"]] << row
+  else
+    output[d["cod_eleccion"]] << row
+    output_trans[d["cod_eleccion"]][d.fetch("INDRAProv") + d.fetch("INDRAdep")][lista.fetch("denominacion_agrupacion")]=val["votos_agrupacion_pct"]
+    eleccion_agrupaciones[d["cod_eleccion"]] << lista.fetch("denominacion_agrupacion")
+  end
 }
 
 # 
@@ -92,10 +98,23 @@ codigos_elecciones.each{|cod_eleccion,name|
         }.reverse[0 ... 3]
       row += top3.map(&:first)
       fd.write(row.join(",") + "\n")
-      if top3.first
+      if top3.first and cod_eleccion == "1" #solo para presidente
         ganador = top3.first
         ganador_distrito[ganador.first] << [distrito_seccion,ganador.last]
       end
+    }
+  }
+}
+
+# 
+# CSVs por codigo de eleccion totalizada por provincia
+#
+header = ["fecha carga","lista","INDRA" ] + totallistas.first.keys
+codigos_elecciones.each{|cod_eleccion,name|
+  open(output_dir + "/#{name}_totales_por_provincia.csv", "w:UTF-8"){|fd|
+    fd.write(header.join(",") + "\n")
+    resultados_por_provincia[cod_eleccion].each{|d|
+      fd.write(([timestamp] + d).join(",") + "\n")
     }
   }
 }
@@ -104,7 +123,7 @@ codigos_elecciones.each{|cod_eleccion,name|
 # departamentos_ganados.csv
 #
 ganador_distrito.each{|agrupacion,distritos_votos|
-  open(output_dir + "/distritos_ganados_#{agrupacion}.csv","w:UTF-8"){|fd|
+  open(output_dir + "/departamentos_ganados_#{agrupacion}.csv","w:UTF-8"){|fd|
     fd.write(["INDRA","votos_pct"].join(",") + "\n")
     distritos_votos.each{|distrito,votos|
       fd.write([distrito,votos].join(",") + "\n")
