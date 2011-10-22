@@ -14,7 +14,7 @@ def parse(fd,k)
     parts = l.split(";")
     parts.pop
     if parts.length != k.length
-      STDERR.write("Warn! expected #{k.length} got #{parts.length}")
+      STDERR.write("#{fd.path} Warn ! expected #{k.length}keys got #{parts.length}\n")
       next
     end
     ret << Hash[k.zip(parts.map(&:strip))]
@@ -34,8 +34,11 @@ totallistas = parse(open(dir + "/totaleslistas.csv","r:ISO8859-1"), %w{cod_elecc
 
 listas = parse(open(dir + "/listas.csv","r:ISO8859-1"), %w{cod_agrupacion sigla_agrupacion denominacion_agrupacion})
 
+totales = parse(open(dir + "/totales.csv","r:ISO8859-1"),  %w{cod_eleccion cod_distrito cod_seccion nombre_lugar mesas_totales mesas_escrutadas mesas_escrutadas_pct electores total_votantes participacion_sobre_censo participacion_sobre_escrutado electores_escrutados  electores_escrutados_pct votos_validos votos_validos_pct votos_positivos votos_positivos_pct votos_en_blanco votos_en_blanco_pct votos_nulos votos_nulos_pct votos_recurridos_e_impugnados votos_recurridos_e_impugnados_pct cargos_a_elegir dia hora minuto } )
+
 output=Hash.new{|h,k| h[k]=[] }
 output_trans=Hash.new{|h,k| h[k]=Hash.new{|h2,k2| h2[k2] = Hash.new{|h3,k3| h3[k3] = []}} }
+output_totales=Hash.new{|h,k| h[k]=[] }
 eleccion_agrupaciones=Hash.new{|h,k| h[k]=Set.new }
 
 totallistas.each{|d|
@@ -80,6 +83,29 @@ codigos_elecciones.each{|cod_eleccion,name|
          agrupacion_votos.last.to_s.to_i # algunos votos son [] (?), así los convierto a 0
         }.reverse[0 ... 3].map(&:first)
       fd.write(row.join(",") + "\n")
+    }
+  }
+}
+
+totales.each{|d|
+  next if d["cod_distrito"] == "999" or d["cod_seccion"] == "999" 
+  val = d.dup
+  %w{mesas_escrutadas mesas_totales electores total_votantes participacion_sobre_censo participacion_sobre_escrutado electores_escrutados  votos_validos votos_positivos votos_en_blanco votos_nulos votos_recurridos_e_impugnados }.each{|k|
+    val[k] = val[k].to_i
+  }
+  %w{ mesas_escrutadas_pct electores_escrutados_pct votos_validos_pct votos_positivos_pct votos_en_blanco_pct votos_nulos votos_nulos_pct votos_recurridos_e_impugnados_pct participacion_sobre_censo participacion_sobre_escrutado }.each{|k|
+    val[k] = "#{val[k].to_f / 100}"
+  }
+
+  output_totales[d["cod_eleccion"]] << [ d.fetch("cod_distrito") + d.fetch("cod_seccion") ] + val.values 
+}
+
+header = ["fecha carga","distrito-seccion" ] + totales.first.keys
+codigos_elecciones.each{|cod_eleccion,name|
+  open(output_dir + "/totales_#{name}.csv", "w:UTF-8"){|fd|
+    fd.write(header.join(",") + "\n")
+    output_totales[cod_eleccion].each{|d|
+      fd.write(([timestamp] + d).join(",") + "\n")
     }
   }
 }
