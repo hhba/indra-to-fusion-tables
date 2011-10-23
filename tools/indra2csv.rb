@@ -3,6 +3,7 @@
 #k=%w{cod_eleccion INDRAProv INDRAdep nombre_lugar mesas_totales mesas_escrutadas mesas_escrutadas_pct electores total_votantes participacion_sobre_censo participacion_sobre_escrutado electores_escrutados electores_escrutados_pct votos_validos votos_validos_pct votos_positivos votos_positivos_pct votos_blanco votos_blanco_pct votos_nulos votos_nulos_pct votos_impugnados votos_impugnados_pct }
 
 def pct2alpha(pct,max=100)
+  pct=max if pct > max
   alpha = pct.to_f * 255 / max
   ("0"+alpha.to_i.to_s(16))[-2..-1]
 end
@@ -18,10 +19,9 @@ def parse(fd,k)
   while not fd.eof? do
     l=fd.readline
     parts = l.split(";")
-    parts.pop
+    parts.pop if l.end_with?(";")
     if parts.length != k.length
       STDERR.write("#{fd.path} Warn ! expected #{k.length}keys got #{parts.length}\n")
-      next
     end
     ret << Hash[k.zip(parts.map(&:strip))]
   end
@@ -105,7 +105,7 @@ codigos_elecciones.each{|cod_eleccion,name|
       if top3.first #color
         agrupacion, values =top3.first
         if mapa_colores[values["cod_agrupacion"]]
-          row << mapa_colores[values["cod_agrupacion"]] + pct2alpha(values["votos_agrupacion_pct"],80)
+          row << mapa_colores[values["cod_agrupacion"]] + pct2alpha(values["votos_agrupacion_pct"].to_f,86)
         end
       end
       row += top3.map{|agrupacion,values| agrupacion}
