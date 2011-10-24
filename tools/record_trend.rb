@@ -7,7 +7,7 @@ trend_table_id = "1932057"
 username,password=File.readlines("#{ENV['HOME']}/.google-credentials").first.split(":") rescue raise "Enter your goog credentials in ~/.google-credentials as user:pass (#{$!})"
 @ft = GData::Client::FusionTables.new      
 @ft.clientlogin(username, password)
-data = @ft.execute("SELECT 'fecha_carga', 'lista', 'cod_agrupacion', SUM('votos_agrupacion') as votos from #{presidente_table_id} group by 'fecha_carga','lista','cod_agrupacion' ")
+data = @ft.execute("SELECT 'fecha carga', 'lista', 'cod_agrupacion', SUM('votos_agrupacion') as votos from #{presidente_table_id} group by 'fecha carga','lista','cod_agrupacion' ")
 
 last_date = data.first && data.first[:"fecha_carga"] 
 sql = "SELECT COUNT() from #{trend_table_id} WHERE 'fecha_carga'='#{last_date}'" 
