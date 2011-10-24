@@ -12,7 +12,7 @@ require "set"
 dir = ARGV[0] || raise("use #{$0} dir output_dir")
 output_dir = ARGV[1] || raise("use #{$0} dir output_dir")
 timestamp = Time.now
-mapa_colores =  {"0131"=>"#1c70b6", "0047"=>"#6cb741", "0137"=>"#a9261c", "0132"=>"#9435f3", "0133"=>"#ffff99", "0134"=>"#fe742c", "0135"=>"#999966"} 
+mapa_colores =  {"0131"=>"#1c70b6", "0047"=>"#6cb741", "0137"=>"#a9261c", "0132"=>"#66CC66", "0133"=>"#ffff99", "0134"=>"#ff66cc", "0135"=>"#FF9966"} 
 
 def parse(fd,k)
   ret = []
