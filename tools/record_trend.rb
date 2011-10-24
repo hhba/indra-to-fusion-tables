@@ -9,7 +9,7 @@ username,password=File.readlines("#{ENV['HOME']}/.google-credentials").first.spl
 @ft.clientlogin(username, password)
 data = @ft.execute("SELECT 'fecha carga', 'lista', 'cod_agrupacion', SUM('votos_agrupacion') as votos from #{presidente_table_id} group by 'fecha carga','lista','cod_agrupacion' ")
 
-last_date = data.first[:"fecha_carga"] 
+last_date = data.first && data.first[:"fecha_carga"] 
 sql = "SELECT COUNT() from #{trend_table_id} WHERE 'fecha_carga'='#{last_date}'" 
 data_exists_for_curr_date = @ft.execute(sql)
 if not data_exists_for_curr_date.empty?
