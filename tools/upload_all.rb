@@ -38,7 +38,7 @@ d["tablas"].each{|fn,table_id|
             columns = csv_in.headers
             columns_sql = columns.map{|i| "'#{i.gsub("'","\\'")}'"}.join(",")
           end
-          values_sql = columns.map{|column| "'#{row[column].gsub("'","\\'")}'"}.join(",")
+          values_sql = columns.map{|column| "'#{row[column].to_s.gsub("'","\\'")}'"}.join(",")
           sql << "INSERT INTO #{table_id} (#{columns_sql}) values (#{values_sql});"
           if sql.length > 100000
             #puts sql
