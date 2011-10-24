@@ -46,7 +46,7 @@ d["tablas"].each{|fn,table_id|
             begin
               @ft.execute(sql)
             rescue
-              puts sql
+#              puts sql
               raise
             end
             sql=''
@@ -58,7 +58,7 @@ d["tablas"].each{|fn,table_id|
         begin
           @ft.execute(sql)
         rescue 
-          puts sql
+#          puts sql
           raise
         end
       end
