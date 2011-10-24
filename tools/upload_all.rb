@@ -26,6 +26,7 @@ d["tablas"].each{|fn,table_id|
     @ft.execute("DELETE FROM #{table_id}") 
   end
   if upload
+    begin
       path = data_dir + "/" + fn + ".csv" 
       puts "uploading #{path} to #{table_id}"
 
@@ -61,6 +62,8 @@ d["tablas"].each{|fn,table_id|
           raise
         end
       end
-
+    rescue
+      puts "Error uploading #{fn}, next!" 
+    end
   end
 }
