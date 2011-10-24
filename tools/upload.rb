@@ -22,7 +22,7 @@ CSV($stdin,:headers => true)     { |csv_in|
   csv_in.each { |row|
     if not columns
       columns = csv_in.headers
-      columns_sql = columns.map{|i| "'#{i}'"}.join(",")
+      columns_sql = columns.map{|i| "'#{i.gsub("'","\'")}'"}.join(",")
     end
     values_sql = columns.map{|column| "'#{row[column]}'"}.join(",")
     sql << "INSERT INTO #{table_id} (#{columns_sql}) values (#{values_sql});"

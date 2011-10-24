@@ -36,20 +36,30 @@ d["tablas"].each{|fn,table_id|
         csv_in.each { |row|
           if not columns
             columns = csv_in.headers
-            columns_sql = columns.map{|i| "'#{i}'"}.join(",")
+            columns_sql = columns.map{|i| "'#{i.gsub("'","\'")}'"}.join(",")
           end
           values_sql = columns.map{|column| "'#{row[column]}'"}.join(",")
           sql << "INSERT INTO #{table_id} (#{columns_sql}) values (#{values_sql});"
           if sql.length > 10000
-            puts sql
-            @ft.execute(sql)
+            #puts sql
+            begin
+              @ft.execute(sql)
+            rescue
+              puts sql
+              raise
+            end
             sql=''
           end
         } 
       }  # from $stdin
       if sql.length > 0
-        puts sql
-        @ft.execute(sql)
+        #puts sql
+        begin
+          @ft.execute(sql)
+        rescue 
+          puts sql
+          raise
+        end
       end
 
   end
